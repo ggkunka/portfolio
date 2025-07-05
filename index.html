@@ -82,5 +82,233 @@
   &copy; 2025 Your Name. All rights reserved.
 </footer>
 
+<script defer>
+  (function () {
+    // Function to initialize the agent
+    function initVerityAgent() {
+      // Check if already initialized
+      if (document.getElementById('verity-agent-iframe')) {
+        return;
+      }
+
+      const parentOrigin = window.location.origin;
+      const parentOriginParam = encodeURIComponent(parentOrigin);
+
+      // Tooltip localStorage key
+      const tooltipStorageKey = "verity-agent-tooltip-dismissed-CUS_a124e646-1488-460d-a566-9d71df44cb0b";
+      const tooltipDismissed = localStorage.getItem(tooltipStorageKey) === 'true';
+
+      // Create tooltip element
+      let tooltipEl = null;
+      const tooltipMessage = "undefined";
+      if (!tooltipDismissed && tooltipMessage && tooltipMessage.trim()) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'verity-agent-tooltip';
+        tooltipEl.style.position = 'fixed';
+        tooltipEl.style.bottom = '90px';
+        tooltipEl.style.right = '20px';
+        tooltipEl.style.maxWidth = '320px';
+        tooltipEl.style.background = '#fff';
+        tooltipEl.style.color = '#222';
+        tooltipEl.style.padding = '16px 20px 16px 16px';
+        tooltipEl.style.borderRadius = '12px';
+        tooltipEl.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)';
+        tooltipEl.style.zIndex = '10000';
+        tooltipEl.style.fontSize = '16px';
+        tooltipEl.style.display = 'flex';
+        tooltipEl.style.alignItems = 'center';
+        tooltipEl.style.gap = '12px';
+        tooltipEl.style.lineHeight = '1.4';
+        tooltipEl.style.transition = 'opacity 0.2s';
+        tooltipEl.innerHTML = "<span>" + tooltipMessage + "</span>" +
+          "<button id='verity-agent-tooltip-close' aria-label='Close tooltip' style='background: none; border: none; color: #888; font-size: 20px; cursor: pointer; margin-left: 8px;'>" +
+          "&times;</button>";
+        document.body.appendChild(tooltipEl);
+        // Close button handler
+        tooltipEl.querySelector('#verity-agent-tooltip-close').onclick = function() {
+          tooltipEl.style.opacity = '0';
+          setTimeout(() => {
+            if (tooltipEl && tooltipEl.parentNode) tooltipEl.parentNode.removeChild(tooltipEl);
+          }, 200);
+          localStorage.setItem(tooltipStorageKey, 'true');
+          // Move chat circle back up
+          if (iframe) iframe.style.bottom = '20px';
+        };
+      }
+
+      const iframe = document.createElement('iframe');
+      iframe.src = "https://chat.veritylabs.ai/embed/CUS_a124e646-1488-460d-a566-9d71df44cb0b?token=agent%3ACUS_a124e646-1488-460d-a566-9d71df44cb0b%3ACfYjelbel8vhBpVdpwUdo21fDPCDMhdiwODM_AcK28A&agent=%7B%22agent_id%22%3A%22CUS_a124e646-1488-460d-a566-9d71df44cb0b%22%2C%22model%22%3A%22anthropic_claude_3_5_sonnet_v1%22%2C%22agent_strategy%22%3A%22react%22%2C%22agent_ui_metadata%22%3Anull%7D&parent_origin=" + parentOriginParam;
+      iframe.title = "Verity Agent";
+      iframe.style.position = "fixed";
+      iframe.style.bottom = "0px";
+      iframe.style.right = "0px";
+      iframe.style.width = "90px";
+      iframe.style.height = "90px";
+      iframe.style.border = "none";
+      iframe.style.zIndex = "9999";
+      iframe.style.background = "transparent";
+      iframe.style.overflow = "hidden";
+      iframe.style.transition = "all 0.3s ease-in-out";
+      iframe.id = "verity-agent-iframe";
+      document.body.appendChild(iframe);
+
+      let isOpen = false;
+      let currentMode = 'minimized'; // 'minimized', 'expanded', 'fullscreen'
+      
+      // Create storage key for persistent state
+      const stateStorageKey = "verity-agent-state-CUS_a124e646-1488-460d-a566-9d71df44cb0b";
+
+      // Load persistent state on initialization
+      try {
+        const savedState = localStorage.getItem(stateStorageKey);
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          if (parsedState.isOpen) {
+            // Set the iframe to the correct size immediately
+            if (parsedState.isFullScreen) {
+              iframe.style.width = "min(90vw, 400px)";
+              iframe.style.height = "100vh";
+              iframe.style.borderRadius = "0px";
+              iframe.style.bottom = "0px";
+              iframe.style.right = "0px";
+              isOpen = true;
+              currentMode = 'fullscreen';
+            } else {
+              iframe.style.width = "min(90vw, 400px)";
+              iframe.style.height = "min(85vh, 800px)";
+              iframe.style.borderRadius = "16px";
+              isOpen = true;
+              currentMode = 'expanded';
+            }
+            
+            // Send message to iframe after a short delay to ensure it's loaded
+            setTimeout(() => {
+              const payload = parsedState.isFullScreen ? 'fullscreen' : 'expand';
+              const message = { type: payload === 'fullscreen' ? 'fullscreen' : 'maximize' };
+              iframe.contentWindow.postMessage(message, "https://chat.veritylabs.ai");
+            }, 500); // 500ms delay to ensure iframe is ready
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load persistent state:', error);
+      }
+
+      // Function to save state
+      function saveState() {
+        try {
+          const stateToSave = {
+            isOpen,
+            isFullScreen: currentMode === 'fullscreen',
+            timestamp: Date.now()
+          };
+          localStorage.setItem(stateStorageKey, JSON.stringify(stateToSave));
+        } catch (error) {
+          console.error('Failed to save persistent state:', error);
+        }
+      }
+
+      window.addEventListener("message", function (e) {
+        if (typeof e.data !== "object") return;
+
+        if (e.data.type === "resize") {
+          switch (e.data.payload) {
+            case "expand":
+              iframe.style.width = "min(90vw, 400px)";
+              iframe.style.height = "min(85vh, 800px)";
+              iframe.style.borderRadius = "16px";
+              iframe.style.bottom = "0px";
+              iframe.style.right = "0px";
+              isOpen = true;
+              currentMode = 'expanded';
+              saveState();
+              // Hide tooltip if open
+              if (tooltipEl) {
+                tooltipEl.style.opacity = '0';
+                setTimeout(() => {
+                  if (tooltipEl && tooltipEl.parentNode) tooltipEl.parentNode.removeChild(tooltipEl);
+                }, 200);
+                localStorage.setItem(tooltipStorageKey, 'true');
+              }
+              break;
+            case "fullscreen":
+              iframe.style.width = "min(90vw, 400px)";
+              iframe.style.height = "100vh";
+              iframe.style.borderRadius = "0px";
+              isOpen = true;
+              iframe.style.bottom = "0px";
+              iframe.style.right = "0px";
+              currentMode = 'fullscreen';
+              saveState();
+              // Hide tooltip if open
+              if (tooltipEl) {
+                tooltipEl.style.opacity = '0';
+                setTimeout(() => {
+                  if (tooltipEl && tooltipEl.parentNode) tooltipEl.parentNode.removeChild(tooltipEl);
+                }, 200);
+                localStorage.setItem(tooltipStorageKey, 'true');
+              }
+              break;
+            case "minimize":
+              iframe.style.width = "90px";
+              iframe.style.height = "90px";
+              iframe.style.borderRadius = "50%";
+              iframe.style.bottom = "0px";
+              iframe.style.right = "0px";
+              isOpen = false;
+              currentMode = 'minimized';
+              saveState();
+              break;
+          }
+        }
+      });
+
+      window.toggleVerityAgent = function () {
+        // Cycle through modes: minimized -> expanded -> fullscreen -> minimized
+        let nextMode;
+        let messageType;
+        
+        switch (currentMode) {
+          case 'minimized':
+            nextMode = 'expanded';
+            messageType = 'maximize';
+            break;
+          case 'expanded':
+            nextMode = 'fullscreen';
+            messageType = 'fullscreen';
+            break;
+          case 'fullscreen':
+            nextMode = 'minimized';
+            messageType = 'minimize';
+            break;
+          default:
+            nextMode = 'expanded';
+            messageType = 'maximize';
+        }
+        
+        const message = { type: messageType };
+        iframe.contentWindow.postMessage(message, "https://chat.veritylabs.ai");
+        // Hide tooltip if chat is opened
+        if (messageType === 'maximize' || messageType === 'fullscreen') {
+          if (tooltipEl) {
+            tooltipEl.style.opacity = '0';
+            setTimeout(() => {
+              if (tooltipEl && tooltipEl.parentNode) tooltipEl.parentNode.removeChild(tooltipEl);
+            }, 200);
+            localStorage.setItem(tooltipStorageKey, 'true');
+          }
+        }
+      };
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initVerityAgent);
+    } else {
+      // DOM is already ready, initialize immediately
+      initVerityAgent();
+    }
+  })();
+</script>
+  
 </body>
 </html>
